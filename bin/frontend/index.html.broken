@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SurveyCraft - Plataforma de Encuestas Gaming</title>
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <!-- Auth Section -->
+  <section id="auth-section">
+    <!-- Login Container -->
+    <div id="login-container" class="auth-container">
+      <div class="auth-card">
+        <img src="/logo.svg" alt="SurveyCraft Logo" style="width: 100px; height: 100px; margin: 0 auto 2rem;">
+        <h1>SurveyCraft</h1>
+        <p class="subtitle">Plataforma de Encuestas Gaming</p>
+        
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-email">📧 Email</label>
+            <input type="email" id="login-email" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="login-password">🔒 Contraseña</label>
+            <input type="password" id="login-password" required>
+          </div>
+          
+          <button type="submit" class="btn btn-primary btn-block">Iniciar Sesión</button>
+        </form>
+        
+        <p class="auth-link">
+          ¿No tienes cuenta? <a href="#" onclick="showRegister(); return false;">Regístrate</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- Register Container -->
+    <div id="register-container" class="auth-container hidden">
+      <div class="auth-card">
+        <img src="/logo.svg" alt="SurveyCraft Logo" style="width: 100px; height: 100px; margin: 0 auto 2rem;">
+        <h1>Crear Cuenta</h1>
+        <p class="subtitle">Únete a la comunidad</p>
+        
+        <form id="register-form">
+          <div class="form-group">
+            <label for="register-name">👤 Nombre</label>
+            <input type="text" id="register-name" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="register-email">📧 Email</label>
+            <input type="email" id="register-email" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="register-password">🔒 Contraseña</label>
+            <input type="password" id="register-password" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="register-role">🎭 Rol</label>
+            <select id="register-role" required>
+              <option value="">Selecciona un rol</option>
+              <option value="PLAYER">🎮 Jugador</option>
+              <option value="CRAFTER">🔨 Creador de Encuestas</option>
+            </select>
+          </div>
+          
+          <button type="submit" class="btn btn-primary btn-block">Registrarse</button>
+        </form>
+        
+        <p class="auth-link">
+          ¿Ya tienes cuenta? <a href="#" onclick="showLogin(); return false;">Inicia Sesión</a>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboard Section -->
+  <section id="dashboard-section" class="hidden">
+    <!-- Navbar -->
+    <nav class="navbar">
+      <div class="navbar-brand">
+        <img src="/logo.svg" alt="SurveyCraft" class="logo-icon">
+        <span>SurveyCraft</span>
+      </div>
+      <div class="navbar-user">
+        <span>👤 <span id="user-name"></span></span>
+        <button id="logout-btn" class="btn btn-secondary">Cerrar Sesión</button>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container">
+      <div class="header">
+        <h2>📊 Mis Encuestas</h2>
+        <button id="create-survey-btn" class="btn btn-primary">➕ Nueva Encuesta</button>
+      </div>
+
+      <div id="surveys-container" class="surveys-grid">
+        <p class="loading">Cargando encuestas...</p>
+      </div>
+    </main>
+  </section>
+
+  <!-- Create Survey Modal -->
+  <div id="create-survey-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>➕ Crear Nueva Encuesta</h3>
+        <button class="close-modal">✕</button>
+      </div>
+      
+      <form id="create-survey-form">
+        <div class="form-group">
+          <label for="survey-title">📝 Título</label>
+          <input type="text" id="survey-title" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="survey-description">📄 Descripción</label>
+          <textarea id="survey-description" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label for="survey-game">🎮 Videojuego</label>
+          <select id="survey-game" class="game-select">
+            <option value="">General</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="survey-type">📋 Tipo de Encuesta</label>
+          <select id="survey-type" required>
+            <option value="">Selecciona un tipo</option>
+            <option value="💻 PC">💻 PC</option>
+            <option value="🎮 PlayStation">🎮 PlayStation</option>
+            <option value="🟢 Xbox">🟢 Xbox</option>
+            <option value="🔴 Nintendo">🔴 Nintendo</option>
+            <option value="📱 Mobile">📱 Mobile</option>
+            <option value="🌐 General">🌐 General</option>
+          </select>
+        </div>
+        
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary close-modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Encuesta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Statistics Modal -->
+  <div id="stats-modal" class="modal-overlay hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h3>📊 Estadísticas: <span id="stats-survey-title"></span></h3>
+        <button class="close-modal">✕</button>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="total-responses">0</div>
+          <div class="stat-label">Total Respuestas</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-value" id="total-questions">0</div>
+          <div class="stat-label">Total Preguntas</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-value" id="survey-status">-</div>
+          <div class="stat-label">Estado</div>
+        </div>
+      </div>
+      
+      <div id="questions-stats" class="questions-container">
+        <p class="loading">Cargando estadísticas...</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

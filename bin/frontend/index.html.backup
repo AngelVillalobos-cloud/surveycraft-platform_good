@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SurveyCraft - Gaming Surveys Platform</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+  <div id="app">
+    <!-- Auth Section -->
+    <div id="auth-container" class="glass-card" style="max-width: 450px; margin: 0 auto;">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <img src="/logo.svg" alt="SurveyCraft Logo" class="logo-icon" style="width: 100px; height: 100px; margin: 0 auto;">
+      </div>
+      <h1 id="auth-title" style="text-align: center; font-size: 2rem; margin-bottom: 1rem;">Bienvenido</h1>
+      <form id="auth-form">
+        <div class="form-group">
+          <input type="email" id="email" placeholder="Correo electrónico" required>
+        </div>
+        <div class="form-group">
+          <input type="password" id="password" placeholder="Contraseña" required>
+        </div>
+        <!-- Extra fields for Register -->
+        <div id="register-fields" class="hidden">
+          <div class="form-group">
+            <input type="text" id="name" placeholder="Nombre completo">
+          </div>
+          <div class="form-group">
+            <select id="role">
+              <option value="PLAYER">🎮 Jugador (Responder)</option>
+              <option value="CRAFTER">🔨 Creador (Hacer encuestas)</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%;">Iniciar Sesión</button>
+      </form>
+      <p style="text-align: center; margin-top: 1rem;">
+        <a href="#" id="toggle-auth">¿No tienes cuenta? Regístrate</a>
+      </p>
+    </div>
+
+    <!-- Dashboard Section (Hidden by default) -->
+    <div id="dashboard-container" class="hidden">
+      <div class="nav-bar glass-card">
+        <h2>
+          <img src="/logo.svg" alt="Logo" class="logo-icon">
+          SurveyCraft
+        </h2>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <span id="user-name">Usuario</span>
+          <button id="logout-btn" class="btn btn-danger btn-sm">Salir</button>
+        </div>
+      </div>
+
+      <!-- Tabs for Crafters -->
+      <div id="crafter-tabs" class="tabs hidden">
+        <button class="tab active" data-tab="all">🌍 Todas las Encuestas</button>
+        <button class="tab" data-tab="mine">📋 Mis Encuestas</button>
+      </div>
+
+      <div class="glass-card">
+        <h3 id="list-title">Encuestas Disponibles</h3>
+        <div id="surveys-list" class="grid-2">
+          <p>Cargando encuestas...</p>
+        </div>
+      </div>
+
+      <div id="crafter-actions" class="glass-card hidden" style="margin-top: 2rem;">
+        <h3>Crear Nueva Encuesta</h3>
+        <button id="create-survey-btn" class="btn btn-primary">🎯 Nueva Encuesta</button>
+      </div>
+    </div>
+
+    <!-- Create/Edit Survey Modal -->
+    <div id="create-survey-modal" class="modal-overlay hidden">
+      <div class="glass-card modal-content" style="width: 90%; max-width: 800px;">
+        <h3 id="modal-form-title">Crear Nueva Encuesta</h3>
+
+        <div class="form-group">
+          <label>Título</label>
+          <input type="text" id="new-survey-title" placeholder="Ej: Satisfacción 2023">
+        </div>
+
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea id="new-survey-desc" placeholder="Breve descripción..."></textarea>
+        </div>
+
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Videojuego / Categoría</label>
+            <div style="display: flex; gap: 0.5rem;">
+              <select id="new-survey-game" style="flex: 1;">
+                <option value="">Cargando juegos...</option>
+              </select>
+              <button id="open-create-game-btn" class="btn btn-secondary" style="padding: 0.5rem; min-width: 40px;"
+                title="Crear nuevo juego/categoría">+</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Tipo de Encuesta</label>
+            <select id="new-survey-type">
+              <option value="SATISFACCION">😊 Satisfacción</option>
+              <option value="BUG_REPORT">🐛 Reporte de Bugs</option>
+              <option value="FEATURE_REQUEST">✨ Solicitud de Funcionalidad</option>
+              <option value="BALANCE">⚖️ Balance del Juego</option>
+              <option value="OTRO">📌 Otro</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="questions-container" style="margin-bottom: 1rem;">
+          <!-- Dynamic Questions go here -->
+        </div>
+
+        <button id="add-question-btn" class="btn btn-secondary" style="margin-bottom: 1rem;">+ Agregar Pregunta</button>
+
+        <div
+          style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+          <button id="cancel-create-btn" class="btn btn-danger">Cancelar</button>
+          <button id="save-survey-btn" class="btn btn-success">Guardar Encuesta</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Game Modal -->
+    <div id="create-game-modal" class="modal-overlay hidden">
+      <div class="glass-card modal-content" style="width: 90%; max-width: 500px;">
+        <h3>🎮 Agregar Nuevo Juego/Categoría</h3>
+        <div class="form-group">
+          <label>Título del Juego</label>
+          <input type="text" id="new-game-title" placeholder="Ej: Minecraft">
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <textarea id="new-game-desc" placeholder="Descripción breve..." style="min-height: 80px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <input type="text" id="new-game-category" placeholder="Ej: Sandbox, RPG, Shooter...">
+          <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.5rem;">
+            Si la categoría no existe, se creará automáticamente.
+          </p>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+          <button id="cancel-create-game-btn" class="btn btn-danger">Cancelar</button>
+          <button id="save-game-btn" class="btn btn-success">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Response Modal -->
+    <div id="response-modal" class="modal-overlay hidden">
+      <div class="glass-card modal-content" style="width: 90%; max-width: 600px;">
+        <h3 id="modal-title">Responder Encuesta</h3>
+
+        <!-- Metadata Fields -->
+        <div class="grid-2 mb-3">
+          <div class="form-group">
+            <label>⏱️ Tiempo Jugado</label>
+            <select id="resp-time">
+              <option value="< 10h">Menos de 10h</option>
+              <option value="10-50h">10 - 50h</option>
+              <option value="50-100h">50 - 100h</option>
+              <option value="> 100h">Más de 100h</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>🎮 Plataforma</label>
+            <select id="resp-platform">
+              <option value="PC">💻 PC</option>
+              <option value="PlayStation">🎮 PlayStation</option>
+              <option value="Xbox">🟢 Xbox</option>
+              <option value="Nintendo">🔴 Nintendo</option>
+              <option value="Mobile">📱 Móvil</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="modal-questions"></div>
+
+        <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+          <button id="close-modal-btn" class="btn btn-danger">Cancelar</button>
+          <button id="submit-response-btn" class="btn btn-success">Enviar Respuesta</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Statistics Modal -->
+    <div id="stats-modal" class="modal-overlay hidden">
+      <div class="glass-card modal-content" style="width: 90%; max-width: 900px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+          <h3 id="stats-title" style="margin: 0;">📊 Estadísticas de la Encuesta</h3>
+          <button id="close-stats-btn" class="btn btn-danger btn-sm">✕</button>
+        </div>
+
+        <!-- Global Stats -->
+        <div class="stats-grid" id="global-stats">
+          <div class="stat-card">
+            <div class="stat-value" id="total-responses">0</div>
+            <div class="stat-label">Respuestas Totales</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="total-questions">0</div>
+            <div class="stat-label">Preguntas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="survey-status">-</div>
+            <div class="stat-label">Estado</div>
+          </div>
+        </div>
+
+        <!-- Questions Stats -->
+        <div id="questions-stats">
+          <!-- Dynamic questions stats will be inserted here -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,671 @@
+import './style.css';
+const API_URL = '/api';
+let token = localStorage.getItem('token');
+let userRole = localStorage.getItem('role');
+
+// DOM Elements
+const app = document.getElementById('app');
+const authContainer = document.getElementById('auth-container');
+const dashboardContainer = document.getElementById('dashboard-container');
+const authForm = document.getElementById('auth-form');
+const authTitle = document.getElementById('auth-title');
+const toggleAuthBtn = document.getElementById('toggle-auth');
+const registerFields = document.getElementById('register-fields');
+const submitBtn = document.getElementById('submit-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const surveysList = document.getElementById('surveys-list');
+const createSurveyBtn = document.getElementById('create-survey-btn');
+const crafterActions = document.getElementById('crafter-actions');
+const crafterTabs = document.getElementById('crafter-tabs');
+const listTitle = document.getElementById('list-title');
+
+// Create/Edit Modal Elements
+const createSurveyModal = document.getElementById('create-survey-modal');
+const modalFormTitle = document.getElementById('modal-form-title');
+const newSurveyTitle = document.getElementById('new-survey-title');
+const newSurveyDesc = document.getElementById('new-survey-desc');
+const newSurveyGame = document.getElementById('new-survey-game');
+const newSurveyType = document.getElementById('new-survey-type');
+const questionsContainer = document.getElementById('questions-container');
+const addQuestionBtn = document.getElementById('add-question-btn');
+const cancelCreateBtn = document.getElementById('cancel-create-btn');
+const saveSurveyBtn = document.getElementById('save-survey-btn');
+
+// Response Modal Elements
+const responseModal = document.getElementById('response-modal');
+const modalTitle = document.getElementById('modal-title');
+const modalQuestions = document.getElementById('modal-questions');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const submitResponseBtn = document.getElementById('submit-response-btn');
+const respTime = document.getElementById('resp-time');
+const respPlatform = document.getElementById('resp-platform');
+
+// Stats Modal Elements
+const statsModal = document.getElementById('stats-modal');
+const closeStatsBtn = document.getElementById('close-stats-btn');
+const statsTitle = document.getElementById('stats-title');
+const questionsStats = document.getElementById('questions-stats');
+
+// Create Game Modal Elements
+const openCreateGameBtn = document.getElementById('open-create-game-btn');
+const createGameModal = document.getElementById('create-game-modal');
+const newGameTitle = document.getElementById('new-game-title');
+const newGameDesc = document.getElementById('new-game-desc');
+const newGameCategory = document.getElementById('new-game-category');
+const cancelCreateGameBtn = document.getElementById('cancel-create-game-btn');
+const saveGameBtn = document.getElementById('save-game-btn');
+
+let isRegistering = false;
+let currentSurveyId = null;
+let currentEditId = null;
+let currentTab = 'all';
+
+// Init
+function init() {
+  if (token) {
+    showDashboard();
+  } else {
+    showAuth();
+  }
+}
+
+// Toggle Login/Register
+toggleAuthBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  isRegistering = !isRegistering;
+  if (isRegistering) {
+    authTitle.textContent = 'Crear Cuenta';
+    submitBtn.textContent = 'Registrarse';
+    toggleAuthBtn.textContent = '¿Ya tienes cuenta? Inicia Sesión';
+    registerFields.classList.remove('hidden');
+  } else {
+    authTitle.textContent = 'Bienvenido';
+    submitBtn.textContent = 'Iniciar Sesión';
+    toggleAuthBtn.textContent = '¿No tienes cuenta? Regístrate';
+    registerFields.classList.add('hidden');
+  }
+});
+
+// Handle Auth Submit
+authForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+
+  try {
+    if (isRegistering) {
+      const name = document.getElementById('name').value;
+      const role = document.getElementById('role').value;
+
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, username: name, role })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Error en el registro');
+      }
+
+      alert('✅ Registro exitoso. Por favor inicia sesión.');
+      isRegistering = false;
+      toggleAuthBtn.click();
+    } else {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!res.ok) throw new Error('Credenciales inválidas');
+
+      const data = await res.json();
+      token = data.token;
+      userRole = data.role;
+      localStorage.setItem('token', token);
+      localStorage.setItem('role', userRole);
+      showDashboard();
+    }
+  } catch (err) {
+    alert('❌ ' + err.message);
+  }
+});
+
+// Logout
+logoutBtn.addEventListener('click', () => {
+  token = null;
+  userRole = null;
+  localStorage.clear();
+  showAuth();
+});
+
+// Show Auth
+function showAuth() {
+  authContainer.classList.remove('hidden');
+  dashboardContainer.classList.add('hidden');
+}
+
+// Show Dashboard
+async function showDashboard() {
+  authContainer.classList.add('hidden');
+  dashboardContainer.classList.remove('hidden');
+
+  if (userRole === 'ROLE_CRAFTER') {
+    crafterActions.classList.remove('hidden');
+    crafterTabs.classList.remove('hidden');
+    switchTab('all');
+  } else {
+    crafterActions.classList.add('hidden');
+    crafterTabs.classList.add('hidden');
+    loadSurveys();
+  }
+}
+
+// Tab Switching
+crafterTabs.addEventListener('click', (e) => {
+  if (e.target.classList.contains('tab')) {
+    const tab = e.target.dataset.tab;
+    switchTab(tab);
+  }
+});
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+
+  if (tab === 'all') {
+    listTitle.textContent = 'Encuestas Disponibles';
+    loadSurveys();
+  } else {
+    listTitle.textContent = 'Mis Encuestas';
+    loadMySurveys();
+  }
+}
+
+// Load All Surveys
+async function loadSurveys() {
+  surveysList.innerHTML = '<div class="spinner"></div>';
+  try {
+    const res = await fetch(`${API_URL}/surveys`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Error cargando encuestas');
+    const surveys = await res.json();
+    renderSurveys(surveys, false);
+  } catch (err) {
+    surveysList.innerHTML = '<p>Error al cargar encuestas.</p>';
+  }
+}
+
+// Load My Surveys
+async function loadMySurveys() {
+  surveysList.innerHTML = '<div class="spinner"></div>';
+  try {
+    const res = await fetch(`${API_URL}/surveys/my-surveys`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Error cargando mis encuestas');
+    const surveys = await res.json();
+    renderSurveys(surveys, true);
+  } catch (err) {
+    surveysList.innerHTML = '<p>Error al cargar mis encuestas.</p>';
+  }
+}
+
+// Render Surveys
+function renderSurveys(surveys, isMine) {
+  if (surveys.length === 0) {
+    surveysList.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No hay encuestas disponibles.</p>';
+    return;
+  }
+
+  surveysList.innerHTML = surveys.map(s => `
+    <div class="survey-card fade-in">
+      <div class="survey-meta">
+        <span class="badge badge-info">🎮 ${s.juegoId || 'General'}</span>
+        <span class="badge ${getStatusBadgeClass(s.estado)}">${getStatusEmoji(s.estado)} ${s.estado || 'Activa'}</span>
+      </div>
+      <h4>${s.titulo || 'Sin título'}</h4>
+      <p>${s.descripcion || 'Sin descripción'}</p>
+      <div class="flex justify-between items-center" style="margin-top: 1rem;">
+        <span class="text-muted text-sm">📊 ${s.totalRespuestas || 0} respuestas</span>
+        <div class="flex gap-sm">
+          ${isMine ? `
+            <button onclick="window.viewStats(${s.surveyId})" class="btn btn-primary btn-sm">📊 Estadísticas</button>
+            <button onclick="window.editSurvey(${s.surveyId})" class="btn btn-secondary btn-sm">✏️ Editar</button>
+            <button onclick="window.deleteSurvey(${s.surveyId})" class="btn btn-danger btn-sm">🗑️</button>
+          ` : `
+            <button onclick="window.viewStats(${s.surveyId})" class="btn btn-secondary btn-sm">📊 Ver Resultados</button>
+            <button onclick="window.openResponseModal(${s.surveyId})" class="btn btn-primary btn-sm">✍️ Responder</button>
+          `}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function getStatusBadgeClass(status) {
+  switch(status?.toLowerCase()) {
+    case 'activa': return 'badge-success';
+    case 'cerrada': return 'badge-danger';
+    case 'pausada': return 'badge-warning';
+    default: return 'badge-info';
+  }
+}
+
+function getStatusEmoji(status) {
+  switch(status?.toLowerCase()) {
+    case 'activa': return '✅';
+    case 'cerrada': return '🔒';
+    case 'pausada': return '⏸️';
+    default: return '📋';
+  }
+}
+
+// ===== STATISTICS MODAL =====
+window.viewStats = async (surveyId) => {
+  statsModal.classList.remove('hidden');
+  questionsStats.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const res = await fetch(`${API_URL}/surveys/${surveyId}/results`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) throw new Error('Error cargando estadísticas');
+
+    const survey = await res.json();
+    statsTitle.textContent = `📊 ${survey.titulo}`;
+
+    // Global Stats
+    document.getElementById('total-responses').textContent = survey.totalRespuestas || 0;
+    document.getElementById('total-questions').textContent = survey.preguntas?.length || 0;
+    document.getElementById('survey-status').textContent = survey.estado || 'Activa';
+
+    // Questions Stats
+    if (!survey.preguntas || survey.preguntas.length === 0) {
+      questionsStats.innerHTML = '<p style="text-align: center; color: var(--text-muted);">Esta encuesta no tiene preguntas todavía.</p>';
+      return;
+    }
+
+    questionsStats.innerHTML = survey.preguntas.map((q, idx) => `
+      <div class="glass-card" style="margin-bottom: 1.5rem;">
+        <h4 style="color: var(--primary); margin-bottom: 1rem;">
+          ${idx + 1}. ${q.textoPregunta}
+        </h4>
+        ${q.opciones.map(opt => {
+          const percentage = opt.porcentaje || 0;
+          const votes = opt.votos || 0;
+          return `
+            <div class="option-result">
+              <div class="option-result-header">
+                <span>${opt.textoOpcion}</span>
+                <span class="votes-count">${votes} votos (${percentage.toFixed(1)}%)</span>
+              </div>
+              <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${percentage}%">
+                  ${percentage > 10 ? percentage.toFixed(0) + '%' : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `).join('');
+
+  } catch (err) {
+    questionsStats.innerHTML = `<p style="text-align: center; color: var(--danger);">❌ ${err.message}</p>`;
+  }
+};
+
+closeStatsBtn.addEventListener('click', () => {
+  statsModal.classList.add('hidden');
+});
+
+// Load Categories
+async function loadCategories() {
+  try {
+    const res = await fetch(`${API_URL}/games`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const games = await res.json();
+      newSurveyGame.innerHTML = games.map(g =>
+        `<option value="${g.id}">${g.titulo} (${g.nombreCategoria})</option>`
+      ).join('');
+    }
+  } catch (err) {
+    console.error('Error loading games', err);
+    newSurveyGame.innerHTML = '<option value="">Error cargando juegos</option>';
+  }
+}
+
+// Open Create Modal
+createSurveyBtn.addEventListener('click', () => {
+  currentEditId = null;
+  modalFormTitle.textContent = 'Crear Nueva Encuesta';
+  saveSurveyBtn.textContent = 'Guardar Encuesta';
+
+  newSurveyTitle.value = '';
+  newSurveyDesc.value = '';
+  questionsContainer.innerHTML = '';
+  addQuestion(1);
+  loadCategories();
+
+  createSurveyModal.classList.remove('hidden');
+});
+
+// Edit Survey
+window.editSurvey = async (id) => {
+  currentEditId = id;
+  modalFormTitle.textContent = 'Editar Encuesta';
+  saveSurveyBtn.textContent = 'Actualizar Encuesta';
+
+  try {
+    const res = await fetch(`${API_URL}/surveys/${id}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Error cargando encuesta');
+
+    const survey = await res.json();
+    newSurveyTitle.value = survey.titulo;
+    newSurveyDesc.value = survey.descripcion;
+
+    await loadCategories();
+    newSurveyGame.value = survey.juegoId;
+
+    questionsContainer.innerHTML = '';
+    if (survey.preguntas && survey.preguntas.length > 0) {
+      survey.preguntas.forEach((q, idx) => {
+        addQuestion(idx + 1, q);
+      });
+    } else {
+      addQuestion(1);
+    }
+
+    createSurveyModal.classList.remove('hidden');
+  } catch (err) {
+    alert('❌ ' + err.message);
+  }
+};
+
+// Delete Survey
+window.deleteSurvey = async (id) => {
+  if (!confirm('⚠️ ¿Estás seguro de eliminar esta encuesta?')) return;
+
+  try {
+    const res = await fetch(`${API_URL}/surveys/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) throw new Error('Error al eliminar');
+
+    alert('✅ Encuesta eliminada exitosamente');
+    loadMySurveys();
+  } catch (err) {
+    alert('❌ ' + err.message);
+  }
+};
+
+// Close Create Modal
+cancelCreateBtn.addEventListener('click', () => {
+  createSurveyModal.classList.add('hidden');
+});
+
+// Add Question Logic
+function addQuestion(index, data = null) {
+  const qDiv = document.createElement('div');
+  qDiv.className = 'question-item';
+
+  const qText = data ? data.textoPregunta : '';
+  const opts = data && data.opciones ? data.opciones.map(o => o.textoOpcion) : ['', '', '', ''];
+
+  qDiv.innerHTML = `
+    <div class="question-header">
+      <strong>❓ Pregunta ${index}</strong>
+      <button class="remove-q-btn btn btn-danger btn-sm">Eliminar</button>
+    </div>
+    <input type="text" class="q-text mb-2" placeholder="¿Qué quieres preguntar?" value="${qText}">
+    
+    <div class="grid-2">
+      <input type="text" class="opt-1" placeholder="Opción 1" value="${opts[0] || ''}" required>
+      <input type="text" class="opt-2" placeholder="Opción 2" value="${opts[1] || ''}" required>
+      <input type="text" class="opt-3" placeholder="Opción 3" value="${opts[2] || ''}" required>
+      <input type="text" class="opt-4" placeholder="Opción 4" value="${opts[3] || ''}" required>
+    </div>
+  `;
+
+  qDiv.querySelector('.remove-q-btn').addEventListener('click', () => qDiv.remove());
+  questionsContainer.appendChild(qDiv);
+}
+
+addQuestionBtn.addEventListener('click', () => {
+  const count = questionsContainer.children.length + 1;
+  addQuestion(count);
+});
+
+// Save Survey Logic
+saveSurveyBtn.addEventListener('click', async () => {
+  const title = newSurveyTitle.value;
+  const desc = newSurveyDesc.value;
+  const gameId = newSurveyGame.value;
+  const type = newSurveyType.value;
+
+  if (!title || !gameId) {
+    alert('⚠️ Título y Juego son obligatorios');
+    return;
+  }
+
+  const questions = [];
+  const qItems = questionsContainer.querySelectorAll('.question-item');
+
+  for (const item of qItems) {
+    const text = item.querySelector('.q-text').value;
+    const opt1 = item.querySelector('.opt-1').value;
+    const opt2 = item.querySelector('.opt-2').value;
+    const opt3 = item.querySelector('.opt-3').value;
+    const opt4 = item.querySelector('.opt-4').value;
+
+    if (!text || !opt1 || !opt2 || !opt3 || !opt4) {
+      alert('⚠️ Completa todas las preguntas y opciones');
+      return;
+    }
+
+    questions.push({
+      texto: text,
+      tipoPregunta: 'SINGLE_CHOICE',
+      opciones: [opt1, opt2, opt3, opt4]
+    });
+  }
+
+  if (questions.length === 0) {
+    alert('⚠️ Agrega al menos una pregunta');
+    return;
+  }
+
+  const payload = {
+    titulo: title,
+    descripcion: desc,
+    juegoId: parseInt(gameId),
+    tipoEncuesta: type,
+    preguntas: questions
+  };
+
+  try {
+    const url = currentEditId ? `${API_URL}/surveys/${currentEditId}` : `${API_URL}/surveys`;
+    const method = currentEditId ? 'PUT' : 'POST';
+
+    const res = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error('Error al guardar');
+
+    alert(currentEditId ? '✅ Encuesta actualizada' : '✅ Encuesta creada exitosamente');
+    createSurveyModal.classList.add('hidden');
+
+    if (currentTab === 'mine') loadMySurveys();
+    else loadSurveys();
+
+  } catch (err) {
+    alert('❌ ' + err.message);
+  }
+});
+
+// Response Modal Logic
+closeModalBtn.addEventListener('click', () => {
+  responseModal.classList.add('hidden');
+});
+
+window.openResponseModal = async (surveyId) => {
+  currentSurveyId = surveyId;
+  responseModal.classList.remove('hidden');
+  modalQuestions.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const res = await fetch(`${API_URL}/surveys/${surveyId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) throw new Error('Error cargando encuesta');
+
+    const survey = await res.json();
+    modalTitle.textContent = survey.titulo;
+
+    if (!survey.preguntas || survey.preguntas.length === 0) {
+      modalQuestions.innerHTML = '<p>Sin preguntas.</p>';
+      return;
+    }
+
+    modalQuestions.innerHTML = survey.preguntas.map(q => `
+      <div class="question-block glass-card p-3 mb-3">
+        <p class="font-bold mb-2">${q.textoPregunta}</p>
+        <div class="grid-2">
+          ${q.opciones.map(opt => `
+            <label class="flex items-center gap-sm cursor-pointer">
+              <input type="radio" name="q-${q.questionId}" value="${opt.optionId}">
+              <span>${opt.textoOpcion}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    modalQuestions.innerHTML = '<p style="color: var(--danger);">❌ Error cargando detalles.</p>';
+  }
+};
+
+// Submit Response
+submitResponseBtn.addEventListener('click', async () => {
+  if (!currentSurveyId) return;
+
+  const answers = [];
+  const questionBlocks = modalQuestions.querySelectorAll('.question-block');
+
+  for (const block of questionBlocks) {
+    const radio = block.querySelector('input[type="radio"]:checked');
+    if (radio) {
+      const questionId = radio.name.replace('q-', '');
+      answers.push({
+        questionId: parseInt(questionId),
+        optionId: parseInt(radio.value)
+      });
+    }
+  }
+
+  if (answers.length === 0) {
+    alert('⚠️ Responde al menos una pregunta');
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/surveys/${currentSurveyId}/respond`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        tiempoJugadoJuego: respTime.value,
+        plataformaUsada: respPlatform.value,
+        respuestas: answers
+      })
+    });
+
+    if (!res.ok) throw new Error('Error enviando respuesta');
+
+    alert('✅ ¡Respuesta enviada con éxito!');
+    responseModal.classList.add('hidden');
+    loadSurveys();
+  } catch (err) {
+    alert('❌ ' + err.message);
+  }
+});
+
+// Create Game Logic
+if (openCreateGameBtn) {
+  openCreateGameBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    newGameTitle.value = '';
+    newGameDesc.value = '';
+    newGameCategory.value = '';
+    createGameModal.classList.remove('hidden');
+  });
+}
+
+if (cancelCreateGameBtn) {
+  cancelCreateGameBtn.addEventListener('click', () => {
+    createGameModal.classList.add('hidden');
+  });
+}
+
+if (saveGameBtn) {
+  saveGameBtn.addEventListener('click', async () => {
+    const title = newGameTitle.value;
+    const desc = newGameDesc.value;
+    const category = newGameCategory.value;
+
+    if (!title || !category) {
+      alert('⚠️ Título y Categoría son obligatorios');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/games`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          titulo: title,
+          descripcion: desc,
+          nombreCategoria: category
+        })
+      });
+
+      if (!res.ok) throw new Error('Error al crear el juego');
+
+      const newGame = await res.json();
+      alert(`✅ Juego "${newGame.titulo}" creado en categoría "${newGame.nombreCategoria}"`);
+      createGameModal.classList.add('hidden');
+
+      await loadCategories();
+      newSurveyGame.value = newGame.id;
+
+    } catch (err) {
+      alert('❌ ' + err.message);
+    }
+  });
+}
+
+init();

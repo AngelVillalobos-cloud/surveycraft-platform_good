@@ -1,0 +1,354 @@
+import './style.css';
+
+// API Configuration
+const API_URL = 'http://localhost:8080/api';
+
+// Global state
+let currentUser = null;
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    setupEventListeners();
+});
+
+// Check authentication
+function checkAuth() {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    
+    if (token && user) {
+        currentUser = JSON.parse(user);
+        showDashboard();
+    } else {
+        showLogin();
+    }
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Login form
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+
+    // Register form
+    const registerForm = document.getElementById('register-form');
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
+    }
+
+    // Logout button
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+
+    // Create survey button
+    const createSurveyBtn = document.getElementById('create-survey-btn');
+    if (createSurveyBtn) {
+        createSurveyBtn.addEventListener('click', () => {
+            document.getElementById('create-survey-modal').classList.remove('hidden');
+        });
+    }
+
+    // Close modals
+    document.querySelectorAll('.close-modal').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.target.closest('.modal-overlay').classList.add('hidden');
+        });
+    });
+
+    // Create survey form
+    const createSurveyForm = document.getElementById('create-survey-form');
+    if (createSurveyForm) {
+        createSurveyForm.addEventListener('submit', handleCreateSurvey);
+    }
+}
+
+// Show/Hide sections
+function showLogin() {
+    document.getElementById('auth-section').classList.remove('hidden');
+    document.getElementById('dashboard-section').classList.add('hidden');
+    document.getElementById('login-container').classList.remove('hidden');
+    document.getElementById('register-container').classList.add('hidden');
+}
+
+function showRegister() {
+    document.getElementById('login-container').classList.add('hidden');
+    document.getElementById('register-container').classList.remove('hidden');
+}
+
+function showDashboard() {
+    document.getElementById('auth-section').classList.add('hidden');
+    document.getElementById('dashboard-section').classList.remove('hidden');
+    document.getElementById('user-name').textContent = currentUser.nombre;
+    loadSurveys();
+    loadGames();
+}
+
+// Handle login
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+
+    try {
+        const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user));
+            currentUser = data.user;
+            showDashboard();
+        } else {
+            alert('❌ Error al iniciar sesión');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
+}
+
+// Handle register
+async function handleRegister(e) {
+    e.preventDefault();
+    const nombre = document.getElementById('register-name').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const role = document.getElementById('register-role').value;
+
+    try {
+        const response = await fetch(`${API_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, email, password, role })
+        });
+
+        if (response.ok) {
+            alert('✅ Registro exitoso. Ahora puedes iniciar sesión.');
+            showLogin();
+        } else {
+            alert('❌ Error al registrarse');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
+}
+
+// Handle logout
+function handleLogout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    currentUser = null;
+    showLogin();
+}
+
+// Load surveys
+async function loadSurveys() {
+    try {
+        const response = await fetch(`${API_URL}/surveys`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+
+        if (response.ok) {
+            const surveys = await response.json();
+            displaySurveys(surveys);
+        } else {
+            console.error('Error loading surveys');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+// Display surveys
+function displaySurveys(surveys) {
+    const container = document.getElementById('surveys-container');
+    
+    if (surveys.length === 0) {
+        container.innerHTML = '<p class="no-data">No hay encuestas disponibles</p>';
+        return;
+    }
+
+    container.innerHTML = surveys.map(survey => `
+        <div class="survey-card">
+            <h4>${survey.titulo}</h4>
+            <p>${survey.descripcion || 'Sin descripción'}</p>
+            <div class="survey-meta">
+                <span class="badge ${getStatusBadgeClass(survey.estado)}">
+                    ${getStatusEmoji(survey.estado)} ${survey.estado}
+                </span>
+                <span>🎮 ${survey.juegoNombre || 'General'}</span>
+            </div>
+            <div class="survey-actions">
+                <button onclick="viewStats(${survey.surveyId})" class="btn btn-secondary">
+                    📊 Estadísticas
+                </button>
+                <button onclick="respondSurvey(${survey.surveyId})" class="btn btn-primary">
+                    ✏️ Responder
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Get status badge class
+function getStatusBadgeClass(estado) {
+    switch(estado?.toLowerCase()) {
+        case 'activa': return 'badge-success';
+        case 'cerrada': return 'badge-danger';
+        case 'pausada': return 'badge-warning';
+        default: return '';
+    }
+}
+
+// Get status emoji
+function getStatusEmoji(estado) {
+    switch(estado?.toLowerCase()) {
+        case 'activa': return '✅';
+        case 'cerrada': return '🔒';
+        case 'pausada': return '⏸️';
+        default: return '';
+    }
+}
+
+// View statistics (NEW FEATURE)
+window.viewStats = async function(surveyId) {
+    try {
+        const response = await fetch(`${API_URL}/surveys/${surveyId}/results`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+
+        if (response.ok) {
+            const stats = await response.json();
+            displayStats(stats);
+        } else {
+            alert('❌ Error al cargar estadísticas');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
+};
+
+// Display statistics
+function displayStats(stats) {
+    const modal = document.getElementById('stats-modal');
+    
+    // Update header
+    document.getElementById('stats-survey-title').textContent = stats.titulo;
+    
+    // Update global stats
+    document.getElementById('total-responses').textContent = stats.totalRespuestas || 0;
+    document.getElementById('total-questions').textContent = stats.preguntas?.length || 0;
+    document.getElementById('survey-status').textContent = stats.estado || 'N/A';
+    
+    // Update questions stats
+    const questionsContainer = document.getElementById('questions-stats');
+    
+    if (!stats.preguntas || stats.preguntas.length === 0) {
+        questionsContainer.innerHTML = '<p class="no-data">No hay datos de respuestas aún</p>';
+    } else {
+        questionsContainer.innerHTML = stats.preguntas.map((pregunta, index) => `
+            <div class="question-stats">
+                <div class="question-header">
+                    <strong>Pregunta ${index + 1}:</strong> ${pregunta.textoPregunta}
+                </div>
+                <div class="options-stats">
+                    ${pregunta.opciones.map(opcion => `
+                        <div class="option-result">
+                            <div class="option-result-header">
+                                <span class="option-name">${opcion.textoOpcion}</span>
+                                <span class="votes-count">${opcion.votos} votos (${opcion.porcentaje.toFixed(1)}%)</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar" style="width: ${opcion.porcentaje}%"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    modal.classList.remove('hidden');
+}
+
+// Respond to survey
+window.respondSurvey = function(surveyId) {
+    alert(`Responder encuesta ${surveyId} - Feature por implementar`);
+};
+
+// Load games
+async function loadGames() {
+    try {
+        const response = await fetch(`${API_URL}/videojuegos`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+
+        if (response.ok) {
+            const games = await response.json();
+            populateGameSelects(games);
+        }
+    } catch (error) {
+        console.error('Error loading games:', error);
+    }
+}
+
+// Populate game selects
+function populateGameSelects(games) {
+    const selects = document.querySelectorAll('.game-select');
+    selects.forEach(select => {
+        select.innerHTML = '<option value="">General</option>' +
+            games.map(game => `<option value="${game.juegoId}">${game.nombre}</option>`).join('');
+    });
+}
+
+// Handle create survey
+async function handleCreateSurvey(e) {
+    e.preventDefault();
+    
+    const surveyData = {
+        titulo: document.getElementById('survey-title').value,
+        descripcion: document.getElementById('survey-description').value,
+        juegoId: document.getElementById('survey-game').value || null,
+        tipoEncuesta: document.getElementById('survey-type').value,
+        estado: 'activa',
+        crafterId: currentUser.userId
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/surveys`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(surveyData)
+        });
+
+        if (response.ok) {
+            alert('✅ Encuesta creada exitosamente');
+            document.getElementById('create-survey-modal').classList.add('hidden');
+            document.getElementById('create-survey-form').reset();
+            loadSurveys();
+        } else {
+            alert('❌ Error al crear encuesta');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
+}
+
+// Make functions available globally
+window.showRegister = showRegister;
+window.showLogin = showLogin;

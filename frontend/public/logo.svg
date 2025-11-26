@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a5b4fc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c4b5fd;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="rgba(165,180,252,0.1)" stroke="url(#logoGradient)" stroke-width="3" filter="url(#glow)"/>
+  
+  <!-- Pickaxe/Craft tool (izquierda) -->
+  <g transform="translate(40, 60)">
+    <!-- Mango -->
+    <rect x="22" y="35" width="8" height="60" rx="2" fill="url(#logoGradient)" opacity="0.9"/>
+    <!-- Cabeza del pico -->
+    <polygon points="10,30 40,30 50,40 40,50 10,50 0,40" fill="url(#logoGradient)" filter="url(#glow)"/>
+    <!-- Detalles -->
+    <line x1="26" y1="40" x2="26" y2="85" stroke="#a5b4fc" stroke-width="1.5" opacity="0.6"/>
+  </g>
+  
+  <!-- Survey/Document (derecha) -->
+  <g transform="translate(95, 50)">
+    <!-- Papel -->
+    <rect x="5" y="5" width="50" height="70" rx="4" fill="rgba(255,255,255,0.1)" stroke="url(#logoGradient)" stroke-width="2" filter="url(#glow)"/>
+    
+    <!-- Líneas de texto -->
+    <line x1="12" y1="20" x2="48" y2="20" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round"/>
+    <line x1="12" y1="30" x2="48" y2="30" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round"/>
+    <line x1="12" y1="40" x2="40" y2="40" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Checkboxes -->
+    <rect x="12" y="50" width="8" height="8" rx="1" fill="none" stroke="#c4b5fd" stroke-width="1.5"/>
+    <polyline points="13,54 15,56 19,52" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <rect x="12" y="62" width="8" height="8" rx="1" fill="none" stroke="#8b5cf6" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Subtle particles -->
+  <circle cx="170" cy="40" r="2" fill="#a5b4fc" opacity="0.8"/>
+  <circle cx="30" cy="170" r="2" fill="#c4b5fd" opacity="0.8"/>
+  <circle cx="160" cy="160" r="2" fill="#10b981" opacity="0.8"/>
+  
+  <!-- Text -->
+  <text x="100" y="175" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="url(#logoGradient)" filter="url(#glow)">
+    SurveyCraft
+  </text>
+</svg>
